@@ -1,0 +1,14 @@
+.grok/secrets.json
+.grok/pglite
+.grok/og-pending
+node_modules
+.DS_Store
+dist
+.output
+.vercel
+.nitro
+.tanstack
+*.log
+/tmp
+screenshots
+artifacts
