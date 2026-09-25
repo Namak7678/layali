@@ -4,6 +4,14 @@ import { join } from "node:path";
 import { z } from "zod";
 import { itemsCost } from "./wholesale";
 import { courierRate } from "./shipping";
+import {
+  botToken,
+  ensureWebhook,
+  sendTelegram,
+  setSetting,
+  storedChatId,
+  telegram,
+} from "./telegram";
 
 export type OpsStatus =
   | "new"
@@ -92,8 +100,6 @@ const TokenZ = z.object({
   token: z.string().max(120).optional(),
 });
 
-type TgJson = { ok?: boolean; description?: string; result?: unknown };
-
 const SECRETS_PATH = join(process.cwd(), ".grok/secrets.json");
 
 function readSecrets(): Record<string, string> {
@@ -112,14 +118,22 @@ function readSecrets(): Record<string, string> {
 function persistSecret(key: string, value: string) {
   const trimmed = value.trim();
   if (!trimmed) return;
-  const next = { ...readSecrets(), [key]: trimmed };
-  writeFileSync(SECRETS_PATH, `${JSON.stringify(next, null, 2)}\n`);
+  try {
+    const next = { ...readSecrets(), [key]: trimmed };
+    writeFileSync(SECRETS_PATH, `${JSON.stringify(next, null, 2)}\n`);
+  } catch {
+    /* Vercel filesystem is read-only — Neon ops_settings is the durable store. */
+  }
 }
 
 function secret(key: string) {
   const v = typeof process !== "undefined" ? process.env[key]?.trim() : "";
   if (v) return v;
   return readSecrets()[key] ?? "";
+}
+
+function resolveToken(passed?: string) {
+  return botToken(passed);
 }
 
 type TgChat = { id?: number; title?: string; first_name?: string; username?: string };
@@ -143,25 +157,6 @@ function chatFromUpdates(result: unknown): { chatId: string; name: string } | nu
     }
   }
   return null;
-}
-
-async function telegram(token: string, method: string, body?: Record<string, unknown>) {
-  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-    method: body ? "POST" : "GET",
-    headers: body ? { "content-type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const json = (await res.json().catch(() => ({}))) as TgJson;
-  return { http: res.status, json };
-}
-
-function resolveToken(passed?: string) {
-  const t = passed?.trim() || secret("TELEGRAM_BOT_TOKEN");
-  return t;
-}
-
-function resolveChat(passed?: string) {
-  return passed?.trim() || secret("TELEGRAM_CHAT_ID");
 }
 
 type OrderRow = {
@@ -212,11 +207,14 @@ function mapOrder(row: OrderRow): OpsOrder {
 export const getRails = createServerFn({ method: "GET" }).handler(async () => {
   const token = secret("TELEGRAM_BOT_TOKEN");
   let botUsername = "";
+  let webhook = "";
   if (token) {
     try {
-      const { json } = await telegram(token, "getMe");
-      const result = json.result as { username?: string } | undefined;
+      const me = await telegram(token, "getMe");
+      const result = me.json.result as { username?: string } | undefined;
       botUsername = result?.username ?? "";
+      const hook = await telegram(token, "getWebhookInfo");
+      webhook = ((hook.json.result as { url?: string } | undefined)?.url ?? "") as string;
     } catch {
       botUsername = "";
     }
@@ -230,14 +228,22 @@ export const getRails = createServerFn({ method: "GET" }).handler(async () => {
   } catch {
     madaPk = "";
   }
+  const chat = await storedChatId();
   return {
     telegramEnv: Boolean(token),
-    telegramChatEnv: Boolean(secret("TELEGRAM_CHAT_ID")),
+    telegramChatEnv: Boolean(chat),
     botUsername,
+    webhook,
     durable: dbSource === "neon",
     madaPk,
     madaSecret: Boolean(secret("MOYASAR_SECRET_KEY")),
   };
+});
+
+export const reconnectRails = createServerFn({ method: "POST" }).handler(async () => {
+  const token = secret("TELEGRAM_BOT_TOKEN");
+  if (!token) return { ok: false as const, reason: "missing_token", url: "" };
+  return ensureWebhook(token);
 });
 
 export const listOrders = createServerFn({ method: "GET" }).handler(async () => {
@@ -307,6 +313,19 @@ export const ingestOrder = createServerFn({ method: "POST" })
         where sku = ${sku}
       `;
     }
+    const token = resolveToken();
+    const chatId = await storedChatId();
+    if (token && chatId) {
+      const lines = data.items.map((i) => `${i.slug} ${i.sizeId}×${i.qty}`).join(", ");
+      const sent = await sendTelegram(
+        token,
+        chatId,
+        `حجز جديد ${data.id}\n${data.city}\n${lines}\n${data.total} ر.س`,
+      );
+      if (sent.ok) {
+        await sql`update ops_orders set telegram_sent = true where id = ${data.id}`;
+      }
+    }
     return { ok: true as const, id: data.id, duplicate: false };
   });
 
@@ -368,18 +387,11 @@ export const notifyTelegram = createServerFn({ method: "POST" })
   .validator((data: unknown) => TelegramZ.parse(data))
   .handler(async ({ data }) => {
     const token = resolveToken(data.token);
-    const chatId = resolveChat(data.chatId);
+    const chatId = data.chatId?.trim() || (await storedChatId());
     if (!token) return { ok: false as const, reason: "missing_token" };
     if (!chatId) return { ok: false as const, reason: "missing_chat" };
     try {
-      const { json } = await telegram(token, "sendMessage", {
-        chat_id: chatId,
-        text: data.text,
-      });
-      return {
-        ok: Boolean(json.ok) as boolean,
-        reason: json.ok ? "sent" : (json.description ?? "telegram_error"),
-      };
+      return await sendTelegram(token, chatId, data.text);
     } catch {
       return { ok: false as const, reason: "network" };
     }
@@ -412,13 +424,24 @@ export const discoverTelegramChat = createServerFn({ method: "POST" })
     const token = resolveToken(data.token);
     if (!token) return { ok: false as const, reason: "missing_token", chatId: "", name: "" };
     try {
+      await ensureWebhook(token);
+      const stored = await storedChatId();
+      if (stored) {
+        persistSecret("TELEGRAM_CHAT_ID", stored);
+        return { ok: true as const, reason: "ok", chatId: stored, name: "" };
+      }
       const { json } = await telegram(token, "getUpdates", { offset: -40, timeout: 0 });
       if (!json.ok) {
-        return { ok: false as const, reason: (json.description as string | undefined) ?? "bad_token", chatId: "", name: "" };
+        const reason = (json.description as string | undefined) ?? "bad_token";
+        if (reason.toLowerCase().includes("webhook")) {
+          return { ok: false as const, reason: "awaiting_start", chatId: "", name: "" };
+        }
+        return { ok: false as const, reason, chatId: "", name: "" };
       }
       const found = chatFromUpdates(json.result);
       if (found) {
         persistSecret("TELEGRAM_CHAT_ID", found.chatId);
+        await setSetting("telegram_chat_id", found.chatId);
         return { ok: true as const, reason: "ok", chatId: found.chatId, name: found.name };
       }
       return { ok: false as const, reason: "no_messages", chatId: "", name: "" };
@@ -500,5 +523,3 @@ export const confirmMadaPayment = createServerFn({ method: "POST" })
     `;
     return { ok: true as const, verified: Boolean(sk) };
   });
-
-

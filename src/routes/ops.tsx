@@ -9,6 +9,7 @@ import { products } from "@/lib/catalog";
 import { t, type DictKey, type Lang } from "@/lib/i18n";
 import { parseWhatsappOrder } from "@/lib/order-parse";
 import {
+  reconnectRails,
   discoverTelegramChat,
   getRails,
   ingestOrder,
@@ -56,6 +57,7 @@ function Ops() {
     telegramEnv: boolean;
     telegramChatEnv: boolean;
     botUsername: string;
+    webhook: string;
     durable: boolean;
     madaPk: string;
     madaSecret: boolean;
@@ -86,6 +88,7 @@ function Ops() {
 
   useEffect(() => {
     void refresh();
+    void reconnectRails();
     const tmr = window.setInterval(() => void refresh(), 8000);
     return () => window.clearInterval(tmr);
   }, [refresh]);
