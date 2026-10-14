@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { timingSafeEqual } from "node:crypto";
+
+const AuthZ = z.string().min(1).max(128);
 import { z } from "zod";
 import { itemsCost } from "./wholesale";
 import { courierRate } from "./shipping";
@@ -66,6 +69,7 @@ const IngestZ = z.object({
 });
 
 const UpdateZ = z.object({
+  auth: AuthZ,
   id: z.string().regex(/^LY-\d{4}$/),
   status: z
     .enum(["new", "confirmed", "sourcing", "packed", "shipped", "delivered", "cancelled"])
@@ -78,6 +82,7 @@ const UpdateZ = z.object({
 });
 
 const RestockZ = z.object({
+  auth: AuthZ,
   lines: z
     .array(
       z.object({
@@ -97,8 +102,24 @@ const TelegramZ = z.object({
 });
 
 const TokenZ = z.object({
+  auth: AuthZ,
   token: z.string().max(120).optional(),
 });
+
+/**
+ * Admin gate for the /ops and /setup surfaces. Every admin-only server
+ * function calls this with the caller-supplied code; the expected code lives
+ * in OPS_PASSCODE (env var or .grok/secrets.json). When unset, admin access is
+ * denied outright (secure default).
+ */
+function assertOpsAccess(auth: unknown): void {
+  const expected = secret("OPS_PASSCODE");
+  const given = typeof auth === "string" ? auth : "";
+  const a = Buffer.from(given, "utf8");
+  const b = Buffer.from(expected, "utf8");
+  if (!expected) throw new Error("ops_passcode_not_configured");
+  if (a.length !== b.length || !timingSafeEqual(a, b)) throw new Error("ops_access_denied");
+}
 
 const SECRETS_PATH = join(process.cwd(), ".grok/secrets.json");
 
@@ -204,7 +225,10 @@ function mapOrder(row: OrderRow): OpsOrder {
   };
 }
 
-export const getRails = createServerFn({ method: "GET" }).handler(async () => {
+export const getRails = createServerFn({ method: "GET" })
+  .validator((data: unknown) => z.object({ auth: AuthZ }).parse(data))
+  .handler(async ({ data }) => {
+    assertOpsAccess(data.auth);
   const token = secret("TELEGRAM_BOT_TOKEN");
   let botUsername = "";
   let webhook = "";
@@ -240,13 +264,19 @@ export const getRails = createServerFn({ method: "GET" }).handler(async () => {
   };
 });
 
-export const reconnectRails = createServerFn({ method: "POST" }).handler(async () => {
-  const token = secret("TELEGRAM_BOT_TOKEN");
-  if (!token) return { ok: false as const, reason: "missing_token", url: "" };
-  return ensureWebhook(token);
-});
+export const reconnectRails = createServerFn({ method: "POST" })
+  .validator((data: unknown) => z.object({ auth: AuthZ }).parse(data))
+  .handler(async ({ data }) => {
+    assertOpsAccess(data.auth);
+    const token = secret("TELEGRAM_BOT_TOKEN");
+    if (!token) return { ok: false as const, reason: "missing_token", url: "" };
+    return ensureWebhook(token);
+  });
 
-export const listOrders = createServerFn({ method: "GET" }).handler(async () => {
+export const listOrders = createServerFn({ method: "GET" })
+  .validator((data: unknown) => z.object({ auth: AuthZ }).parse(data))
+  .handler(async ({ data }) => {
+    assertOpsAccess(data.auth);
   const { getSql } = await import("@/lib/db");
   const sql = await getSql();
   const rows = await sql<OrderRow>`
@@ -259,7 +289,10 @@ export const listOrders = createServerFn({ method: "GET" }).handler(async () => 
   return rows.map(mapOrder);
 });
 
-export const listStock = createServerFn({ method: "GET" }).handler(async () => {
+export const listStock = createServerFn({ method: "GET" })
+  .validator((data: unknown) => z.object({ auth: AuthZ }).parse(data))
+  .handler(async ({ data }) => {
+    assertOpsAccess(data.auth);
   const { getSql } = await import("@/lib/db");
   const sql = await getSql();
   const rows = await sql<{
@@ -332,6 +365,7 @@ export const ingestOrder = createServerFn({ method: "POST" })
 export const updateOrder = createServerFn({ method: "POST" })
   .validator((data: unknown) => UpdateZ.parse(data))
   .handler(async ({ data }) => {
+    assertOpsAccess(data.auth);
     const { getSql } = await import("@/lib/db");
     const sql = await getSql();
     const rows = await sql<OrderRow>`
@@ -370,6 +404,7 @@ export const updateOrder = createServerFn({ method: "POST" })
 export const restockItems = createServerFn({ method: "POST" })
   .validator((data: unknown) => RestockZ.parse(data))
   .handler(async ({ data }) => {
+    assertOpsAccess(data.auth);
     const { getSql } = await import("@/lib/db");
     const sql = await getSql();
     for (const line of data.lines) {
@@ -400,6 +435,7 @@ export const notifyTelegram = createServerFn({ method: "POST" })
 export const verifyTelegram = createServerFn({ method: "POST" })
   .validator((data: unknown) => TokenZ.parse(data))
   .handler(async ({ data }) => {
+    assertOpsAccess(data.auth);
     const token = resolveToken(data.token);
     if (!token) return { ok: false as const, reason: "missing_token", username: "" };
     try {
@@ -421,6 +457,7 @@ export const verifyTelegram = createServerFn({ method: "POST" })
 export const discoverTelegramChat = createServerFn({ method: "POST" })
   .validator((data: unknown) => TokenZ.parse(data))
   .handler(async ({ data }) => {
+    assertOpsAccess(data.auth);
     const token = resolveToken(data.token);
     if (!token) return { ok: false as const, reason: "missing_token", chatId: "", name: "" };
     try {
@@ -463,8 +500,9 @@ export const getMadaKey = createServerFn({ method: "GET" }).handler(async () => 
 });
 
 export const saveMadaKey = createServerFn({ method: "POST" })
-  .validator((data: unknown) => z.object({ pk: z.string().max(120) }).parse(data))
+  .validator((data: unknown) => z.object({ auth: AuthZ, pk: z.string().max(120) }).parse(data))
   .handler(async ({ data }) => {
+    assertOpsAccess(data.auth);
     const pk = data.pk.trim();
     if (pk && !MoyasarPkZ.safeParse(pk).success) {
       return { ok: false as const, reason: "bad_key" };
@@ -523,3 +561,32 @@ export const confirmMadaPayment = createServerFn({ method: "POST" })
     `;
     return { ok: true as const, verified: Boolean(sk) };
   });
+
+export const verifyOpsPasscode = createServerFn({ method: "POST" })
+  .validator((data: unknown) => z.object({ auth: z.string().min(1).max(128) }).parse(data))
+  .handler(async ({ data }) => {
+    const expected = secret("OPS_PASSCODE");
+    if (!expected) return { ok: false as const, reason: "not_configured" };
+    const a = Buffer.from(data.auth, "utf8");
+    const b = Buffer.from(expected, "utf8");
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      return { ok: false as const, reason: "denied" };
+    }
+    return { ok: true as const };
+  });
+
+/** Public, customer-safe aggregate for the campaign page — no order details. */
+export const campaignStats = createServerFn({ method: "GET" }).handler(async () => {
+  const { getSql } = await import("@/lib/db");
+  const sql = await getSql();
+  const rows = await sql<{ total: number; paid: boolean }>`
+    select total, paid from ops_orders order by created_at desc limit 200
+  `;
+  let booked = 0;
+  let received = 0;
+  for (const r of rows) {
+    if (r.paid) received += Number(r.total) || 0;
+    else booked += Number(r.total) || 0;
+  }
+  return { count: rows.length, booked, received };
+});

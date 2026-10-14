@@ -34,6 +34,7 @@ import {
 import { useShop } from "@/lib/shop";
 import { formatSar, orderId, waHref } from "@/lib/utils";
 import { factoryOrderText, skuLabel, SUPPLIER, unitCost } from "@/lib/wholesale";
+import { OpsGate, clearStoredOpsAuth, getStoredOpsAuth, opsDenied, opsPasscodeNotConfigured } from "@/lib/ops-gate";
 
 export const Route = createFileRoute("/ops")({ component: Ops });
 
@@ -48,6 +49,21 @@ const STATUS_KEY: Record<string, DictKey> = {
 };
 
 function Ops() {
+  const [auth, setAuth] = useState(getStoredOpsAuth());
+  return auth ? (
+    <OpsDashboard
+      auth={auth}
+      onDeny={() => {
+        clearStoredOpsAuth();
+        setAuth("");
+      }}
+    />
+  ) : (
+    <OpsGate onPass={setAuth} />
+  );
+}
+
+function OpsDashboard({ auth, onDeny }: { auth: string; onDeny: () => void }) {
   const lang = useShop((s) => s.lang);
   const merchant = useShop((s) => s.merchant);
   const setMerchant = useShop((s) => s.setMerchant);
@@ -73,25 +89,29 @@ function Ops() {
   const refresh = useCallback(async () => {
     try {
       const [nextOrders, nextStock, nextRails] = await Promise.all([
-        listOrders(),
-        listStock(),
-        getRails(),
+        listOrders({ data: { auth } }),
+        listStock({ data: { auth } }),
+        getRails({ data: { auth } }),
       ]);
       setOrders(nextOrders);
       setStock(nextStock);
       setRails(nextRails);
       setSelectedId((id) => id ?? nextOrders[0]?.id ?? null);
-    } catch {
+    } catch (e) {
+      if (opsDenied(e) || opsPasscodeNotConfigured(e)) {
+        onDeny();
+        return;
+      }
       /* keep last snapshot */
     }
-  }, []);
+  }, [auth, onDeny]);
 
   useEffect(() => {
     void refresh();
-    void reconnectRails();
+    void reconnectRails({ data: { auth } }).catch(() => undefined);
     const tmr = window.setInterval(() => void refresh(), 8000);
     return () => window.clearInterval(tmr);
-  }, [refresh]);
+  }, [refresh, auth]);
 
   useEffect(() => {
     if (selected) setAwb(selected.tracking);
@@ -114,12 +134,12 @@ function Ops() {
           },
         });
         if (res.ok) {
-          await updateOrder({ data: { id: order.id, telegramSent: true } });
+          await updateOrder({ data: { auth, id: order.id, telegramSent: true } });
           void refresh();
         }
       })();
     }
-  }, [orders, canToken, canChat, merchant.telegramToken, merchant.telegramChatId, lang, refresh]);
+  }, [orders, canToken, canChat, merchant.telegramToken, merchant.telegramChatId, lang, refresh, auth, onDeny]);
 
   const low = stock.filter((s) => s.onHand <= s.reorderAt);
   const restockLines = useMemo(
@@ -180,7 +200,12 @@ function Ops() {
 
   async function setStatus(status: Exclude<OpsStatus, "new" | "shipped">) {
     if (!selected) return;
-    await updateOrder({ data: { id: selected.id, status } });
+    try {
+      await updateOrder({ data: { auth, id: selected.id, status } });
+    } catch (e) {
+      if (opsDenied(e)) onDeny();
+      return;
+    }
     void refresh();
   }
 
@@ -188,14 +213,20 @@ function Ops() {
     if (!selected) return;
     const tracking = awb.trim();
     if (!tracking) return;
-    await updateOrder({
-      data: {
-        id: selected.id,
-        status: "shipped",
-        carrier: merchant.courierId,
-        tracking,
-      },
-    });
+    try {
+      await updateOrder({
+        data: {
+          auth,
+          id: selected.id,
+          status: "shipped",
+          carrier: merchant.courierId,
+          tracking,
+        },
+      });
+    } catch (e) {
+      if (opsDenied(e)) onDeny();
+      return;
+    }
     void refresh();
     toast(t(lang, "markShipped"));
   }
@@ -216,7 +247,14 @@ function Ops() {
   }
 
   async function onVerify() {
-    const res = await verifyTelegram({ data: { token: merchant.telegramToken || undefined } });
+    let res;
+    try {
+      res = await verifyTelegram({ data: { auth, token: merchant.telegramToken || undefined } });
+    } catch (e) {
+      if (opsDenied(e)) onDeny();
+      else toast(t(lang, "tgBad"));
+      return;
+    }
     if (res.ok) {
       setMerchant({ telegramBotName: res.username });
       toast(`${t(lang, "tgOk")}${res.username ? ` @${res.username}` : ""}`);
@@ -224,7 +262,14 @@ function Ops() {
   }
 
   async function onDiscover() {
-    const res = await discoverTelegramChat({ data: { token: merchant.telegramToken || undefined } });
+    let res;
+    try {
+      res = await discoverTelegramChat({ data: { auth, token: merchant.telegramToken || undefined } });
+    } catch (e) {
+      if (opsDenied(e)) onDeny();
+      else toast(t(lang, "tgNoChat"));
+      return;
+    }
     if (res.ok && res.chatId) {
       setMerchant({ telegramChatId: res.chatId });
       toast(res.chatId);
@@ -243,7 +288,12 @@ function Ops() {
 
   async function arrived() {
     if (!restockLines.length) return;
-    await restockItems({ data: { lines: restockLines } });
+    try {
+      await restockItems({ data: { auth, lines: restockLines } });
+    } catch (e) {
+      if (opsDenied(e)) onDeny();
+      return;
+    }
     void refresh();
     toast(t(lang, "factoryArrived"));
   }
