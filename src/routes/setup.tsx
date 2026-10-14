@@ -11,10 +11,26 @@ import { isMoyasarPk } from "@/lib/moyasar";
 import { couriers, isCourierId, type CourierId } from "@/lib/shipping";
 import { SUPPLIER } from "@/lib/wholesale";
 import { sanitizePhone } from "@/lib/utils";
+import { OpsGate, clearStoredOpsAuth, getStoredOpsAuth, opsDenied } from "@/lib/ops-gate";
 
 export const Route = createFileRoute("/setup")({ component: Setup });
 
 function Setup() {
+  const [auth, setAuth] = useState(getStoredOpsAuth());
+  return auth ? (
+    <SetupDashboard
+      auth={auth}
+      onDeny={() => {
+        clearStoredOpsAuth();
+        setAuth("");
+      }}
+    />
+  ) : (
+    <OpsGate onPass={setAuth} />
+  );
+}
+
+function SetupDashboard({ auth, onDeny }: { auth: string; onDeny: () => void }) {
   const lang = useShop((s) => s.lang);
   const merchant = useShop((s) => s.merchant);
   const setMerchant = useShop((s) => s.setMerchant);
@@ -86,9 +102,13 @@ function Setup() {
       toast(t(lang, "madaBad"));
       return;
     }
-    void saveMadaKey({ data: { pk } }).then((res) => {
-      if (res.ok && pk) toast(t(lang, "madaOk"));
-    });
+    void saveMadaKey({ data: { auth, pk } })
+      .then((res) => {
+        if (res.ok && pk) toast(t(lang, "madaOk"));
+      })
+      .catch((e) => {
+        if (opsDenied(e)) onDeny();
+      });
     const origin = window.location.origin;
     const url = digits ? `${origin}/?wa=${digits}` : origin;
     setLink(url);
@@ -108,7 +128,7 @@ function Setup() {
   async function onVerify() {
     setBusy(true);
     try {
-      const res = await verifyTelegram({ data: { token: telegramToken } });
+      const res = await verifyTelegram({ data: { auth, token: telegramToken } });
       if (res.ok) {
         setMerchant({ telegramToken: telegramToken.trim(), telegramBotName: res.username });
         toast(`${t(lang, "tgOk")}${res.username ? ` @${res.username}` : ""}`);
@@ -122,7 +142,7 @@ function Setup() {
   async function onDiscover() {
     setBusy(true);
     try {
-      const res = await discoverTelegramChat({ data: { token: telegramToken } });
+      const res = await discoverTelegramChat({ data: { auth, token: telegramToken } });
       if (res.ok && res.chatId) {
         setTelegramChatId(res.chatId);
         setMerchant({ telegramToken: telegramToken.trim(), telegramChatId: res.chatId });

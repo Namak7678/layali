@@ -5,7 +5,7 @@ import { SocialLinks } from "@/components/social-links";
 import { Button } from "@/components/ui/button";
 import { CAMPAIGN, MONEY } from "@/lib/house";
 import { t } from "@/lib/i18n";
-import { listOrders } from "@/lib/ops-server";
+import { campaignStats } from "@/lib/ops-server";
 import { useShop } from "@/lib/shop";
 import { formatSar } from "@/lib/utils";
 
@@ -19,11 +19,11 @@ function Campaign() {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    void listOrders()
-      .then((rows) => {
-        setCount(rows.length);
-        setBooked(rows.filter((o) => !o.paid).reduce((n, o) => n + o.total, 0));
-        setReceived(rows.filter((o) => o.paid).reduce((n, o) => n + o.total, 0));
+    void campaignStats()
+      .then((s) => {
+        setCount(s.count);
+        setBooked(s.booked);
+        setReceived(s.received);
       })
       .catch(() => undefined);
   }, []);
