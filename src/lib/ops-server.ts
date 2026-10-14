@@ -123,6 +123,32 @@ function assertOpsAccess(auth: unknown): void {
 
 const SECRETS_PATH = join(process.cwd(), ".grok/secrets.json");
 
+/**
+ * Profit ping: notify the owner's ops agent when an order is paid, so a
+ * WhatsApp profit alert goes out immediately. Fire-and-forget, never blocks
+ * checkout. Disabled unless PROFIT_WEBHOOK_URL is configured.
+ */
+async function notifyProfitPing(orderId: string, amountHalalas: number) {
+  const url = secret("PROFIT_WEBHOOK_URL");
+  if (!url) return;
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        orderId,
+        amount: Math.round(amountHalalas / 100),
+        store: "layali",
+        product: "",
+        currency: "SAR",
+        key: secret("PROFIT_WEBHOOK_KEY") || undefined,
+      }),
+    });
+  } catch {
+    /* profit ping must never break the payment flow */
+  }
+}
+
 function readSecrets(): Record<string, string> {
   try {
     const parsed = JSON.parse(readFileSync(SECRETS_PATH, "utf8")) as Record<string, unknown>;
@@ -559,6 +585,7 @@ export const confirmMadaPayment = createServerFn({ method: "POST" })
       set paid = ${true}, payment_ref = ${data.paymentId}
       where id = ${data.orderId}
     `;
+    void notifyProfitPing(data.orderId, data.amount);
     return { ok: true as const, verified: Boolean(sk) };
   });
 
