@@ -29,6 +29,7 @@ export function StoreShell({ children }: { children: ReactNode }) {
 
   const nav = [
     { to: "/shop" as const, label: t(lang, "shop") },
+    { to: "/gift-cards" as const, label: t(lang, "giftNav") },
     { to: "/about" as const, label: t(lang, "house") },
     { to: "/care" as const, label: t(lang, "care") },
   ];

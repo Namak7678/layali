@@ -14,10 +14,12 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as CampaignRouteImport } from './routes/campaign'
 import { Route as CareRouteImport } from './routes/care'
 import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as GiftCardsRouteImport } from './routes/gift-cards'
 import { Route as OpsRouteImport } from './routes/ops'
 import { Route as PayRouteImport } from './routes/pay'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as ShopRouteImport } from './routes/shop'
+import { Route as ApiTelegramRouteImport } from './routes/api/telegram'
 import { Route as ProductSlugRouteImport } from './routes/product.$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -45,6 +47,11 @@ const CheckoutRoute = CheckoutRouteImport.update({
   path: '/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GiftCardsRoute = GiftCardsRouteImport.update({
+  id: '/gift-cards',
+  path: '/gift-cards',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OpsRoute = OpsRouteImport.update({
   id: '/ops',
   path: '/ops',
@@ -65,6 +72,11 @@ const ShopRoute = ShopRouteImport.update({
   path: '/shop',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTelegramRoute = ApiTelegramRouteImport.update({
+  id: '/api/telegram',
+  path: '/api/telegram',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductSlugRoute = ProductSlugRouteImport.update({
   id: '/product/$slug',
   path: '/product/$slug',
@@ -77,10 +89,12 @@ export interface FileRoutesByFullPath {
   '/campaign': typeof CampaignRoute
   '/care': typeof CareRoute
   '/checkout': typeof CheckoutRoute
+  '/gift-cards': typeof GiftCardsRoute
   '/ops': typeof OpsRoute
   '/pay': typeof PayRoute
   '/setup': typeof SetupRoute
   '/shop': typeof ShopRoute
+  '/api/telegram': typeof ApiTelegramRoute
   '/product/$slug': typeof ProductSlugRoute
 }
 export interface FileRoutesByTo {
@@ -89,10 +103,12 @@ export interface FileRoutesByTo {
   '/campaign': typeof CampaignRoute
   '/care': typeof CareRoute
   '/checkout': typeof CheckoutRoute
+  '/gift-cards': typeof GiftCardsRoute
   '/ops': typeof OpsRoute
   '/pay': typeof PayRoute
   '/setup': typeof SetupRoute
   '/shop': typeof ShopRoute
+  '/api/telegram': typeof ApiTelegramRoute
   '/product/$slug': typeof ProductSlugRoute
 }
 export interface FileRoutesById {
@@ -102,10 +118,12 @@ export interface FileRoutesById {
   '/campaign': typeof CampaignRoute
   '/care': typeof CareRoute
   '/checkout': typeof CheckoutRoute
+  '/gift-cards': typeof GiftCardsRoute
   '/ops': typeof OpsRoute
   '/pay': typeof PayRoute
   '/setup': typeof SetupRoute
   '/shop': typeof ShopRoute
+  '/api/telegram': typeof ApiTelegramRoute
   '/product/$slug': typeof ProductSlugRoute
 }
 export interface FileRouteTypes {
@@ -116,10 +134,12 @@ export interface FileRouteTypes {
     | '/campaign'
     | '/care'
     | '/checkout'
+    | '/gift-cards'
     | '/ops'
     | '/pay'
     | '/setup'
     | '/shop'
+    | '/api/telegram'
     | '/product/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -128,10 +148,12 @@ export interface FileRouteTypes {
     | '/campaign'
     | '/care'
     | '/checkout'
+    | '/gift-cards'
     | '/ops'
     | '/pay'
     | '/setup'
     | '/shop'
+    | '/api/telegram'
     | '/product/$slug'
   id:
     | '__root__'
@@ -140,10 +162,12 @@ export interface FileRouteTypes {
     | '/campaign'
     | '/care'
     | '/checkout'
+    | '/gift-cards'
     | '/ops'
     | '/pay'
     | '/setup'
     | '/shop'
+    | '/api/telegram'
     | '/product/$slug'
   fileRoutesById: FileRoutesById
 }
@@ -153,10 +177,12 @@ export interface RootRouteChildren {
   CampaignRoute: typeof CampaignRoute
   CareRoute: typeof CareRoute
   CheckoutRoute: typeof CheckoutRoute
+  GiftCardsRoute: typeof GiftCardsRoute
   OpsRoute: typeof OpsRoute
   PayRoute: typeof PayRoute
   SetupRoute: typeof SetupRoute
   ShopRoute: typeof ShopRoute
+  ApiTelegramRoute: typeof ApiTelegramRoute
   ProductSlugRoute: typeof ProductSlugRoute
 }
 
@@ -197,6 +223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/gift-cards': {
+      id: '/gift-cards'
+      path: '/gift-cards'
+      fullPath: '/gift-cards'
+      preLoaderRoute: typeof GiftCardsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ops': {
       id: '/ops'
       path: '/ops'
@@ -225,6 +258,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShopRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/telegram': {
+      id: '/api/telegram'
+      path: '/api/telegram'
+      fullPath: '/api/telegram'
+      preLoaderRoute: typeof ApiTelegramRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/product/$slug': {
       id: '/product/$slug'
       path: '/product/$slug'
@@ -241,10 +281,12 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignRoute: CampaignRoute,
   CareRoute: CareRoute,
   CheckoutRoute: CheckoutRoute,
+  GiftCardsRoute: GiftCardsRoute,
   OpsRoute: OpsRoute,
   PayRoute: PayRoute,
   SetupRoute: SetupRoute,
   ShopRoute: ShopRoute,
+  ApiTelegramRoute: ApiTelegramRoute,
   ProductSlugRoute: ProductSlugRoute,
 }
 export const routeTree = rootRouteImport
