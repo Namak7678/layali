@@ -35,6 +35,7 @@ import { useShop } from "@/lib/shop";
 import { formatSar, orderId, waHref } from "@/lib/utils";
 import { factoryOrderText, skuLabel, SUPPLIER, unitCost } from "@/lib/wholesale";
 import { OpsGate, clearStoredOpsAuth, getStoredOpsAuth, opsDenied, opsPasscodeNotConfigured } from "@/lib/ops-gate";
+import { GiftCardDesk } from "@/components/gift-card-desk";
 
 export const Route = createFileRoute("/ops")({ component: Ops });
 
@@ -418,6 +419,8 @@ function OpsDashboard({ auth, onDeny }: { auth: string; onDeny: () => void }) {
         <p className="mt-1 text-xs text-subtle">{t(lang, "cashWhop")}</p>
         <p className="mt-1 text-xs text-subtle">{rails?.madaPk ? t(lang, "cashMadaOn") : t(lang, "cashMadaOff")}</p>
       </section>
+
+      <GiftCardDesk auth={auth} />
 
       <div className="mt-10 grid gap-8 lg:grid-cols-[0.9fr_1.2fr]">
         <section className="space-y-4">
