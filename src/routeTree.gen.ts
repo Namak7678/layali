@@ -19,6 +19,7 @@ import { Route as OpsRouteImport } from './routes/ops'
 import { Route as PayRouteImport } from './routes/pay'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as ShopRouteImport } from './routes/shop'
+import { Route as ApiProfitPingRouteImport } from './routes/api/profit-ping'
 import { Route as ApiTelegramRouteImport } from './routes/api/telegram'
 import { Route as ProductSlugRouteImport } from './routes/product.$slug'
 
@@ -72,6 +73,11 @@ const ShopRoute = ShopRouteImport.update({
   path: '/shop',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiProfitPingRoute = ApiProfitPingRouteImport.update({
+  id: '/api/profit-ping',
+  path: '/api/profit-ping',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTelegramRoute = ApiTelegramRouteImport.update({
   id: '/api/telegram',
   path: '/api/telegram',
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/pay': typeof PayRoute
   '/setup': typeof SetupRoute
   '/shop': typeof ShopRoute
+  '/api/profit-ping': typeof ApiProfitPingRoute
   '/api/telegram': typeof ApiTelegramRoute
   '/product/$slug': typeof ProductSlugRoute
 }
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/pay': typeof PayRoute
   '/setup': typeof SetupRoute
   '/shop': typeof ShopRoute
+  '/api/profit-ping': typeof ApiProfitPingRoute
   '/api/telegram': typeof ApiTelegramRoute
   '/product/$slug': typeof ProductSlugRoute
 }
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/pay': typeof PayRoute
   '/setup': typeof SetupRoute
   '/shop': typeof ShopRoute
+  '/api/profit-ping': typeof ApiProfitPingRoute
   '/api/telegram': typeof ApiTelegramRoute
   '/product/$slug': typeof ProductSlugRoute
 }
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/pay'
     | '/setup'
     | '/shop'
+    | '/api/profit-ping'
     | '/api/telegram'
     | '/product/$slug'
   fileRoutesByTo: FileRoutesByTo
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/pay'
     | '/setup'
     | '/shop'
+    | '/api/profit-ping'
     | '/api/telegram'
     | '/product/$slug'
   id:
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/pay'
     | '/setup'
     | '/shop'
+    | '/api/profit-ping'
     | '/api/telegram'
     | '/product/$slug'
   fileRoutesById: FileRoutesById
@@ -182,6 +194,7 @@ export interface RootRouteChildren {
   PayRoute: typeof PayRoute
   SetupRoute: typeof SetupRoute
   ShopRoute: typeof ShopRoute
+  ApiProfitPingRoute: typeof ApiProfitPingRoute
   ApiTelegramRoute: typeof ApiTelegramRoute
   ProductSlugRoute: typeof ProductSlugRoute
 }
@@ -258,6 +271,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShopRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/profit-ping': {
+      id: '/api/profit-ping'
+      path: '/api/profit-ping'
+      fullPath: '/api/profit-ping'
+      preLoaderRoute: typeof ApiProfitPingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/telegram': {
       id: '/api/telegram'
       path: '/api/telegram'
@@ -286,6 +306,7 @@ const rootRouteChildren: RootRouteChildren = {
   PayRoute: PayRoute,
   SetupRoute: SetupRoute,
   ShopRoute: ShopRoute,
+  ApiProfitPingRoute: ApiProfitPingRoute,
   ApiTelegramRoute: ApiTelegramRoute,
   ProductSlugRoute: ProductSlugRoute,
 }
