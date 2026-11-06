@@ -48,7 +48,7 @@ export function houseFacts(lang: Lang) {
     { k: ar ? "الخبرة" : "Craft", v: ar ? "١٢ سنة في تركيب الدهن والعود قبل فتح الدار" : "12 years composing oils and oud before the house opened" },
     { k: ar ? "المجموعة" : "The line", v: ar ? "٦ تراكيب · دفعات محدودة · تعبئة باليد" : "6 compositions · limited batches · filled by hand" },
     { k: ar ? "المتابعون" : "Following", v: ar ? "حسابات الإطلاق: @layali.riyadh — لا نعرض رقماً غير حقيقي" : "Launch handles @layali.riyadh — we do not invent a follower count" },
-    { k: ar ? "المبيعات" : "Sales", v: ar ? "كل حجز يظهر في الصندوق. المال يصل STC Pay أو الآيبان المسجَّل باسمك." : "Every booking lands in the inbox. Funds go to the STC Pay or IBAN saved in your name." },
+    { k: ar ? "المبيعات" : "Sales", v: ar ? "كل حجز يظهر في الصندوق. المال يصل إس تي سي باي أو الآيبان المسجَّل باسمك." : "Every booking lands in the inbox. Funds go to the STC Pay or IBAN saved in your name." },
   ];
 }
 
@@ -147,11 +147,11 @@ export const CAMPAIGN = {
 export const MONEY = {
   title: { ar: "إلى أين تذهب المبيعات", en: "Where the money goes" },
   public: {
-    ar: "التحويل يصل حساب الدار مباشرة: STC Pay أو الآيبان المعلن عند الطلب. لا عمولة وسيطة، ولا بطاقة في الدردشة.",
+    ar: "التحويل يصل حساب الدار مباشرة: إس تي سي باي أو الآيبان المعلن عند الطلب. لا عمولة وسيطة، ولا بطاقة في الدردشة.",
     en: "Transfers land in the house account directly: STC Pay or the IBAN given at order. No intermediary cut, no card in chat.",
   },
   body: {
-    ar: "لا وسطاء. العميل يحوّل على STC Pay أو الآيبان الذي حفظته في إعداد المتجر — المبلغ يصل حسابك البنكي مباشرة. مدى، إن رُبط، يمر Moyasar ثم إلى البنك المرتبط بسجلك. Stripe التجريبي وWhop ليسا مسار بيع العطر. نحن لا نمسك المال ولا نحوّل إلى بطاقة.",
+    ar: "لا وسطاء. العميل يحوّل على إس تي سي باي أو الآيبان الذي حفظته في إعداد المتجر — المبلغ يصل حسابك البنكي مباشرة. مدى، إن رُبط، يمر عبر ميسر ثم إلى البنك المرتبط بسجلك. الوضع التجريبي لبوابات البطاقات ليس مسار بيع العطر. نحن لا نمسك المال ولا نحوّل إلى بطاقة.",
     en: "No middle desk. The customer transfers to the STC Pay or IBAN you saved in store setup — funds land in your bank directly. Mada, if keyed, goes through Moyasar then to the bank on your CR. Test Stripe and Whop are not the perfume rail. We do not hold the money and we do not payout to a card.",
   },
 };

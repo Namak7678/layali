@@ -63,10 +63,18 @@ function Campaign() {
         <article className="rounded-3xl bg-surface p-5 shadow-[var(--shadow-border)]">
           <h2 className="font-display text-2xl">{MONEY.title[lang]}</h2>
           <p className="mt-3 text-sm leading-relaxed text-muted">{MONEY.body[lang]}</p>
-          <p className="mt-4 text-sm text-muted">
-            STC Pay: {merchant.stcPay || t(lang, "railOff")}
+          <p className="mt-4 flex items-baseline justify-between gap-4 text-sm text-muted">
+            <span className="shrink-0">{t(lang, "stcPay")}</span>
+            <bdi dir="ltr" className="min-w-0 break-all text-end tabular-nums">
+              {merchant.stcPay || t(lang, "railOff")}
+            </bdi>
           </p>
-          <p className="mt-1 text-sm text-muted">IBAN: {merchant.iban || t(lang, "railOff")}</p>
+          <p className="mt-3 flex items-baseline justify-between gap-4 text-sm text-muted">
+            <span className="shrink-0">{t(lang, "iban")}</span>
+            <bdi dir="ltr" className="min-w-0 break-all text-end tabular-nums">
+              {merchant.iban || t(lang, "railOff")}
+            </bdi>
+          </p>
           <Button asChild variant="outline" className="mt-5 w-full">
             <Link to="/setup">{t(lang, "setup")}</Link>
           </Button>

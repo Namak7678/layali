@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { t } from "@/lib/i18n";
 import { verifyOpsPasscode } from "@/lib/ops-server";
+import { useShop } from "@/lib/shop";
 
 const STORAGE_KEY = "layali_ops_passcode";
 
@@ -39,6 +41,7 @@ export function opsPasscodeNotConfigured(error: unknown): boolean {
 }
 
 export function OpsGate({ onPass }: { onPass: (auth: string) => void }) {
+  const lang = useShop((s) => s.lang);
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -55,14 +58,12 @@ export function OpsGate({ onPass }: { onPass: (auth: string) => void }) {
         setStoredOpsAuth(auth);
         onPass(auth);
       } else if (res.reason === "not_configured") {
-        setError(
-          "رمز الحماية غير مضبوط على السيرفر — اضبط OPS_PASSCODE ثم أعد المحاولة / Access code not configured on the server (set OPS_PASSCODE)",
-        );
+        setError(t(lang, "opsGateMissing"));
       } else {
-        setError("رمز غير صحيح / Wrong code");
+        setError(t(lang, "opsGateBad"));
       }
     } catch {
-      setError("تعذر الاتصال بالسيرفر / Could not reach the server");
+      setError(t(lang, "opsGateOffline"));
     } finally {
       setBusy(false);
     }
@@ -70,12 +71,9 @@ export function OpsGate({ onPass }: { onPass: (auth: string) => void }) {
 
   return (
     <div className="mx-auto max-w-md px-4 py-24 text-center">
-      <p className="text-xs tracking-[0.28em] text-muted">LAYALI OPS</p>
-      <h1 className="mt-2 font-display text-3xl">رمز الدخول</h1>
-      <p className="mt-2 text-xs text-muted">Access code</p>
-      <p className="mt-4 text-sm leading-relaxed text-muted">
-        هـذه الصفحة إدارية ومحمية. / This page is admin-only and protected.
-      </p>
+      <p className="text-xs tracking-[0.28em] text-muted">{t(lang, "opsKicker")}</p>
+      <h1 className="mt-2 font-display text-3xl">{t(lang, "opsGateTitle")}</h1>
+      <p className="mt-4 text-sm leading-relaxed text-muted">{t(lang, "opsGateBody")}</p>
       <form className="mt-8 flex gap-3" onSubmit={submit}>
         <Input
           type="password"
@@ -86,7 +84,7 @@ export function OpsGate({ onPass }: { onPass: (auth: string) => void }) {
           autoComplete="current-password"
         />
         <Button type="submit" disabled={busy || !value.trim()}>
-          {busy ? "..." : "دخول / Unlock"}
+          {busy ? "…" : t(lang, "opsGateUnlock")}
         </Button>
       </form>
       {error && <p className="mt-4 text-sm text-red-500">{error}</p>}

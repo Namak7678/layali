@@ -424,6 +424,10 @@ export const updateOrder = createServerFn({ method: "POST" })
           shipping_cost = ${shippingCost}
       where id = ${data.id}
     `;
+    const justPaid = paid && !current.paid;
+    if (justPaid) {
+      void notifyProfitPing(data.id, (Number(current.total) || 0) * 100);
+    }
     return { ok: true as const };
   });
 
@@ -598,6 +602,70 @@ export const verifyOpsPasscode = createServerFn({ method: "POST" })
     const b = Buffer.from(expected, "utf8");
     if (a.length !== b.length || !timingSafeEqual(a, b)) {
       return { ok: false as const, reason: "denied" };
+    }
+    return { ok: true as const };
+  });
+
+const RAIL_WHATSAPP = "rail_whatsapp";
+const RAIL_STC = "rail_stc";
+const RAIL_IBAN = "rail_iban";
+
+function cleanRailPhone(raw: string) {
+  return raw.replace(/[^\d]/g, "").slice(0, 16);
+}
+
+function cleanRailIban(raw: string) {
+  return raw.replace(/\s+/g, "").toUpperCase().slice(0, 34);
+}
+
+/**
+ * Customer-visible transfer numbers. Public on purpose: a buyer must see
+ * where to send the money. Nothing secret is stored under these keys.
+ */
+export const getCheckoutRails = createServerFn({ method: "GET" }).handler(async () => {
+  const { getSql } = await import("@/lib/db");
+  const sql = await getSql();
+  const rows = await sql<{ k: string; v: string }>`
+    select k, v from ops_settings
+    where k in (${RAIL_WHATSAPP}, ${RAIL_STC}, ${RAIL_IBAN})
+  `;
+  const map = new Map(rows.map((row) => [row.k, row.v]));
+  return {
+    whatsapp: map.get(RAIL_WHATSAPP) ?? "",
+    stcPay: map.get(RAIL_STC) ?? "",
+    iban: map.get(RAIL_IBAN) ?? "",
+  };
+});
+
+export const saveCheckoutRails = createServerFn({ method: "POST" })
+  .validator((data: unknown) =>
+    z
+      .object({
+        auth: AuthZ,
+        whatsapp: z.string().max(24).optional().default(""),
+        stcPay: z.string().max(24).optional().default(""),
+        iban: z.string().max(42).optional().default(""),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    assertOpsAccess(data.auth);
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    const rails: Array<[string, string]> = [
+      [RAIL_WHATSAPP, cleanRailPhone(data.whatsapp)],
+      [RAIL_STC, cleanRailPhone(data.stcPay)],
+      [RAIL_IBAN, cleanRailIban(data.iban)],
+    ];
+    for (const [key, value] of rails) {
+      if (!value) {
+        await sql`delete from ops_settings where k = ${key}`;
+        continue;
+      }
+      await sql`
+        insert into ops_settings (k, v) values (${key}, ${value})
+        on conflict (k) do update set v = excluded.v
+      `;
     }
     return { ok: true as const };
   });

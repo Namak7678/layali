@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
+import { giftDue, giftPromoOn } from "./gift-money";
 import { botToken, sendTelegram, storedChatId } from "./telegram";
 
 /**
@@ -45,20 +46,29 @@ function assertOpsAccess(auth: unknown): void {
   if (a.length !== b.length || !timingSafeEqual(a, b)) throw new Error("ops_access_denied");
 }
 
-/** Profit ping — same rail as confirmMadaPayment: fire-and-forget, never blocks. */
+/**
+ * Profit ping — same payload shape as the perfume confirm-paid rail
+ * (SAR in `amount`, `orderId` for the relay). Optional: skipped when
+ * PROFIT_WEBHOOK_URL is unset. PROFIT_WEBHOOK_KEY is forwarded when set;
+ * the relay does not require it. Never blocks the ops action.
+ */
 async function notifyProfitPing(ref: string, amountSar: number) {
   const url = secret("PROFIT_WEBHOOK_URL");
   if (!url) return;
+  const key = secret("PROFIT_WEBHOOK_KEY");
   try {
     await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         event: "gift_card_paid",
+        orderId: ref,
         order_id: ref,
-        amount: amountSar * 100, // halalas, consistent with the mada rail
-        currency: "SAR",
+        amount: amountSar,
+        store: "layali",
         product: "gift_card",
+        currency: "SAR",
+        key: key || undefined,
       }),
     });
   } catch {
@@ -81,6 +91,7 @@ export type GiftCard = {
   note: string;
   paid: boolean;
   delivered: boolean;
+  promoOn: boolean;
   createdAt: string;
 };
 
@@ -90,6 +101,7 @@ const CreateZ = z.object({
   recipient: z.string().regex(/^\d{8,16}$/),
   senderName: z.string().trim().min(1).max(40),
   note: z.string().trim().max(200).optional().default(""),
+  promoCode: z.string().trim().max(40).optional().default(""),
 });
 
 export const createGiftCard = createServerFn({ method: "POST" })
@@ -115,10 +127,12 @@ export const createGiftCard = createServerFn({ method: "POST" })
     }
 
     const code = giftCode();
+    const promoOn = giftPromoOn(data.promoCode);
+    const due = giftDue(data.amount, promoOn);
     await sql`
-      insert into ops_gift_cards (id, code, amount, buyer, recipient, sender_name, note)
+      insert into ops_gift_cards (id, code, amount, buyer, recipient, sender_name, note, promo_on)
       values (${id}, ${code}, ${data.amount}, ${data.buyer}, ${data.recipient},
-              ${data.senderName}, ${data.note})
+              ${data.senderName}, ${data.note}, ${promoOn})
     `;
 
     const token = botToken();
@@ -126,10 +140,12 @@ export const createGiftCard = createServerFn({ method: "POST" })
     if (token && chatId) {
       const lines = [
         `بطاقة هدية جديدة ${id}`,
-        `${data.amount} ر.س`,
+        `القيمة: ${data.amount} ر.س`,
+        `المستحق: ${due} ر.س`,
+        promoOn ? "الرمز: LAYALI10" : "",
         `من: ${data.senderName}`,
         `المستلم: ${data.recipient}`,
-      ];
+      ].filter(Boolean);
       if (data.note) lines.push(`الرسالة: ${data.note}`);
       const sent = await sendTelegram(token, chatId, lines.join("\n"));
       if (sent.ok) {
@@ -137,8 +153,8 @@ export const createGiftCard = createServerFn({ method: "POST" })
       }
     }
 
-    // The code itself is never returned here — only the booking reference.
-    return { ok: true as const, id };
+    // The code itself is never returned here — only the booking reference and what to transfer.
+    return { ok: true as const, id, due, face: data.amount, promoOn };
   });
 
 const ListZ = z.object({ auth: AuthZ });
@@ -159,10 +175,11 @@ export const listGiftCards = createServerFn({ method: "GET" })
       note: string;
       paid: boolean;
       delivered: boolean;
+      promo_on: boolean;
       created_at: string;
     }>`
       select id, code, amount, buyer, recipient, sender_name, note,
-             paid, delivered, created_at::text as created_at
+             paid, delivered, promo_on, created_at::text as created_at
       from ops_gift_cards
       order by created_at desc
       limit 60
@@ -178,6 +195,7 @@ export const listGiftCards = createServerFn({ method: "GET" })
         note: r.note,
         paid: Boolean(r.paid),
         delivered: Boolean(r.delivered),
+        promoOn: Boolean(r.promo_on),
         createdAt: r.created_at,
       }),
     );
@@ -196,8 +214,14 @@ export const updateGiftCard = createServerFn({ method: "POST" })
     assertOpsAccess(data.auth);
     const { getSql } = await import("./db");
     const sql = await getSql();
-    const rows = await sql<{ id: string; paid: boolean; amount: number; recipient: string }>`
-      select id, paid, amount, recipient from ops_gift_cards where id = ${data.id}
+    const rows = await sql<{
+      id: string;
+      paid: boolean;
+      amount: number;
+      recipient: string;
+      promo_on: boolean;
+    }>`
+      select id, paid, amount, recipient, promo_on from ops_gift_cards where id = ${data.id}
     `;
     const current = rows[0];
     if (!current) return { ok: false as const, reason: "missing" as const };
@@ -212,9 +236,10 @@ export const updateGiftCard = createServerFn({ method: "POST" })
       where id = ${data.id}
     `;
 
-    const justPaid = paid && !Boolean(current.paid);
+    const justPaid = paid && !current.paid;
     if (justPaid) {
-      await notifyProfitPing(data.id, Number(current.amount) || 0);
+      const due = giftDue(Number(current.amount) || 0, current.promo_on);
+      await notifyProfitPing(data.id, due);
     }
 
     return { ok: true as const };
