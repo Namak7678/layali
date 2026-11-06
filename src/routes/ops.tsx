@@ -338,7 +338,7 @@ function OpsDashboard({ auth, onDeny }: { auth: string; onDeny: () => void }) {
       },
     });
     if (res.ok) {
-      await updateOrder({ data: { id: selected.id, telegramSent: true } });
+      await updateOrder({ data: { auth, id: selected.id, telegramSent: true } });
       toast(t(lang, "tgSent"));
       void refresh();
     } else toast(t(lang, "tgMiss"));
@@ -355,7 +355,13 @@ function OpsDashboard({ auth, onDeny }: { auth: string; onDeny: () => void }) {
 
   async function markPaid(paid: boolean) {
     if (!selected) return;
-    await updateOrder({ data: { id: selected.id, paid } });
+    try {
+      await updateOrder({ data: { auth, id: selected.id, paid } });
+    } catch (e) {
+      if (opsDenied(e)) onDeny();
+      else toast(t(lang, "bookFail"));
+      return;
+    }
     void refresh();
     toast(paid ? t(lang, "payPaid") : t(lang, "payUnpaid"));
   }

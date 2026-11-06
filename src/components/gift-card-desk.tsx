@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { t } from "@/lib/i18n";
 import { useShop } from "@/lib/shop";
+import { giftDue } from "@/lib/gift-money";
 import { formatSar, waHref } from "@/lib/utils";
 import { listGiftCards, updateGiftCard, type GiftCard } from "@/lib/gift-cards-server";
 
@@ -75,12 +76,17 @@ export function GiftCardDesk({ auth }: { auth: string }) {
             <li key={card.id} className="rounded-2xl bg-elevated p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="text-sm tabular-nums">
-                    {card.id} · {formatSar(card.amount, lang)}
+                  <p className="text-sm tabular-nums" dir="ltr">
+                    {card.id} · <bdi>{formatSar(card.amount, lang)}</bdi>
                   </p>
                   <p className="text-xs text-muted">
-                    {card.senderName} → {card.recipient}
+                    {card.senderName} → <bdi dir="ltr">{card.recipient}</bdi>
                   </p>
+                  {card.promoOn ? (
+                    <p className="text-xs text-muted">
+                      {t(lang, "giftDue")} <bdi>{formatSar(giftDue(card.amount, true), lang)}</bdi>
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge>{card.paid ? t(lang, "payPaid") : t(lang, "payUnpaid")}</Badge>
@@ -99,7 +105,9 @@ export function GiftCardDesk({ auth }: { auth: string }) {
                 </Button>
                 {card.paid ? (
                   <>
-                    <code className="rounded-md bg-surface px-2 py-1 text-xs tabular-nums">{card.code}</code>
+                    <code className="rounded-md bg-surface px-2 py-1 text-xs tabular-nums" dir="ltr">
+                      {card.code}
+                    </code>
                     <Button
                       size="sm"
                       variant="outline"
@@ -120,7 +128,7 @@ export function GiftCardDesk({ auth }: { auth: string }) {
                         onClick={() => patch(card.id, { delivered: true })}
                         disabled={busy}
                       >
-                        {t(lang, "giftOpsDelivered")}
+                        {t(lang, "giftOpsMarkDelivered")}
                       </Button>
                     ) : null}
                   </>

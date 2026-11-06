@@ -38,7 +38,13 @@ function Home() {
         <div className="relative mx-auto flex min-h-[100svh] max-w-6xl flex-col justify-end px-4 pb-16 pt-28">
           <p className="rise-in text-xs tracking-[0.28em] text-accent">{t(lang, "heroKicker")}</p>
           <p className="rise-in mt-5 inline-flex w-fit items-center gap-2 rounded-full border border-accent/40 bg-bg/60 px-4 py-1.5 text-[11px] tracking-[0.12em] text-accent backdrop-blur">
-            {lang === "ar" ? "خصم الإطلاق ١٠٪ بكود LAYALI10" : "Launch offer: 10% off with code LAYALI10"}
+            {lang === "ar" ? (
+              <>
+                خصم الإطلاق ١٠٪ بكود <bdi dir="ltr">LAYALI10</bdi>
+              </>
+            ) : (
+              "Launch offer: 10% off with code LAYALI10"
+            )}
           </p>
           <h1 className="rise-in-2 mt-4 max-w-xl font-display text-4xl leading-[1.1] md:text-6xl">
             {t(lang, "heroTitle")}

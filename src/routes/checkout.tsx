@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { MadaForm } from "@/components/mada-form";
+import { PaymentRails } from "@/components/payment-rails";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +45,8 @@ function Checkout() {
   const [district, setDistrict] = useState("");
   const [note, setNote] = useState("");
   const [sent, setSent] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState("");
+  const [receiptTotal, setReceiptTotal] = useState(0);
   const [paid, setPaid] = useState(false);
   const [busy, setBusy] = useState(false);
   const [pk, setPk] = useState("");
@@ -77,8 +80,8 @@ function Checkout() {
       "",
       `${lang === "ar" ? "الإجمالي" : "Total"}: ${formatSar(sums.total, lang)}`,
       note.trim() ? `${lang === "ar" ? "ملاحظة" : "Note"}: ${note.trim()}` : "",
-      merchant.stcPay ? `STC Pay: ${merchant.stcPay}` : "",
-      merchant.iban ? `IBAN: ${merchant.iban}` : "",
+      merchant.stcPay ? `${t(lang, "stcPay")}: ${merchant.stcPay}` : "",
+      merchant.iban ? `${t(lang, "iban")}: ${merchant.iban}` : "",
     ]
       .filter((x) => x !== "")
       .join("\n");
@@ -101,6 +104,8 @@ function Checkout() {
       },
     });
     if (!filed.ok) throw new Error(filed.reason);
+    setReceipt(message);
+    setReceiptTotal(sums.total);
     try {
       await notifyTelegram({
         data: {
@@ -124,12 +129,10 @@ function Checkout() {
     const id = orderId();
     setBusy(true);
     try {
-      const message = await fileOrder(id);
+      await fileOrder(id);
       setSent(id);
+      clear();
       toast(t(lang, "bookedOk"));
-      if (merchant.whatsapp) {
-        window.open(waHref(merchant.whatsapp, message), "_blank", "noopener,noreferrer");
-      }
     } catch {
       toast(t(lang, "bookFail"));
     }
@@ -177,8 +180,7 @@ function Checkout() {
   }
 
   async function copySummary() {
-    const id = sent ?? orderId();
-    const message = buildMessage(id);
+    const message = receipt || buildMessage(sent ?? orderId());
     try {
       await navigator.clipboard.writeText(message);
       toast(t(lang, "copied"));
@@ -201,13 +203,30 @@ function Checkout() {
   if (sent) {
     return (
       <div className="mx-auto max-w-lg px-4 py-24 text-center">
-        <p className="text-xs tracking-[0.28em] text-muted">{sent}</p>
+        <p className="text-xs tracking-[0.28em] text-muted" dir="ltr">
+          {sent}
+        </p>
         <h1 className="mt-3 font-display text-4xl">{paid ? t(lang, "paySuccess") : t(lang, "thanks")}</h1>
         <p className="mt-4 text-muted">{paid ? t(lang, "payMadaBody") : t(lang, "thanksBody")}</p>
+        {receiptTotal ? (
+          <p className="mt-4 font-display text-3xl tabular-nums">
+            <bdi>{formatSar(receiptTotal, lang)}</bdi>
+          </p>
+        ) : null}
+        <div className="mt-6 text-start">
+          <PaymentRails lang={lang} stcPay={merchant.stcPay} iban={merchant.iban} />
+        </div>
         <div className="mt-8 flex flex-col gap-3">
+          {merchant.whatsapp && receipt ? (
+            <Button
+              onClick={() => window.open(waHref(merchant.whatsapp, receipt), "_blank", "noopener,noreferrer")}
+            >
+              {t(lang, "giftSendWa")}
+            </Button>
+          ) : null}
           <Button onClick={copySummary}>{t(lang, "copyOrder")}</Button>
           <Button asChild variant="outline">
-            <Link to="/ops">{t(lang, "openOps")}</Link>
+            <Link to="/care">{t(lang, "care")}</Link>
           </Button>
           <Button asChild variant="outline">
             <Link to="/shop">{t(lang, "continue")}</Link>
@@ -246,12 +265,7 @@ function Checkout() {
         <h1 className="font-display text-4xl">{t(lang, "checkoutTitle")}</h1>
         <p className="mt-2 max-w-md text-sm text-muted">{t(lang, "checkoutHint")}</p>
         {!merchant.whatsapp ? (
-          <p className="mt-4 rounded-2xl bg-elevated px-4 py-3 text-sm text-muted">
-            {t(lang, "noWa")}{" "}
-            <Link to="/setup" className="text-fg underline-offset-4 hover:underline">
-              {t(lang, "setup")}
-            </Link>
-          </p>
+          <p className="mt-4 rounded-2xl bg-elevated px-4 py-3 text-sm text-muted">{t(lang, "noWaPublic")}</p>
         ) : null}
 
         <form
@@ -269,6 +283,8 @@ function Checkout() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               inputMode="tel"
+              dir="ltr"
+              className={lang === "ar" ? "text-right" : undefined}
               autoComplete="tel"
               placeholder="05xxxxxxxx"
               required
@@ -312,7 +328,10 @@ function Checkout() {
               value={promo}
               onChange={(e) => setPromo(e.target.value)}
               placeholder={t(lang, "promo")}
-              className="flex-1"
+              aria-label={t(lang, "promo")}
+              dir="ltr"
+              className={`flex-1 ${lang === "ar" ? "text-right" : ""}`}
+              autoCapitalize="characters"
             />
             <Button
               type="button"
@@ -322,6 +341,8 @@ function Checkout() {
               {t(lang, "apply")}
             </Button>
           </div>
+
+          <PaymentRails lang={lang} stcPay={merchant.stcPay} iban={merchant.iban} />
 
           {pk ? (
             <Button type="button" className="w-full" disabled={busy} onClick={() => void submitMada()}>
@@ -350,7 +371,9 @@ function Checkout() {
                     {size.label[lang]} × {line.qty}
                   </p>
                 </div>
-                <p className="text-sm tabular-nums">{formatSar(size.price * line.qty, lang)}</p>
+                <p className="text-sm tabular-nums">
+                  <bdi>{formatSar(size.price * line.qty, lang)}</bdi>
+                </p>
               </li>
             );
           })}

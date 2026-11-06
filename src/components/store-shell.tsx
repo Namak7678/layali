@@ -6,6 +6,7 @@ import { CareDock } from "@/components/care-dock";
 import { CartSheet } from "@/components/cart-sheet";
 import { SocialLinks } from "@/components/social-links";
 import { t } from "@/lib/i18n";
+import { getCheckoutRails } from "@/lib/ops-server";
 import { cartCount, useShop } from "@/lib/shop";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,20 @@ export function StoreShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     hydrate();
+    let live = true;
+    void getCheckoutRails()
+      .then((rails) => {
+        if (!live) return;
+        const patch: { whatsapp?: string; stcPay?: string; iban?: string } = {};
+        if (rails.whatsapp) patch.whatsapp = rails.whatsapp;
+        if (rails.stcPay) patch.stcPay = rails.stcPay;
+        if (rails.iban) patch.iban = rails.iban;
+        if (patch.whatsapp || patch.stcPay || patch.iban) useShop.getState().setMerchant(patch);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
   }, [hydrate]);
 
   useEffect(() => {
@@ -42,7 +57,7 @@ export function StoreShell({ children }: { children: ReactNode }) {
             <button
               type="button"
               className="inline-flex size-11 items-center justify-center rounded-md md:hidden"
-              aria-label="Menu"
+              aria-label={t(lang, "menu")}
               onClick={() => setMenu((v) => !v)}
             >
               {menu ? <X className="size-5" /> : <Menu className="size-5" />}
@@ -112,7 +127,7 @@ export function StoreShell({ children }: { children: ReactNode }) {
         ) : null}
       </header>
 
-      <main className="relative z-0 flex-1">{children}</main>
+      <main className="relative z-0 flex-1 pb-24">{children}</main>
 
       <footer className="mt-auto border-t border-border">
         <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 md:flex-row md:items-end md:justify-between">

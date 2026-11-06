@@ -18,7 +18,9 @@ export function SocialLinks({ lang, className }: { lang: Lang; className?: strin
               className="text-muted transition-colors duration-quick hover:text-fg"
             >
               {s[lang]}
-              <span className="ms-1 text-subtle">@{handle}</span>
+              <span className="ms-1 inline-block text-subtle" dir="ltr">
+                @{handle}
+              </span>
             </a>
           </li>
         );

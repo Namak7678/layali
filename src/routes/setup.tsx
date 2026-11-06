@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { t } from "@/lib/i18n";
-import { discoverTelegramChat, saveMadaKey, getMadaKey, verifyTelegram } from "@/lib/ops-server";
+import { discoverTelegramChat, saveCheckoutRails, saveMadaKey, getMadaKey, verifyTelegram } from "@/lib/ops-server";
 import { useShop } from "@/lib/shop";
 import { isMoyasarPk } from "@/lib/moyasar";
 import { couriers, isCourierId, type CourierId } from "@/lib/shipping";
@@ -97,6 +97,19 @@ function SetupDashboard({ auth, onDeny }: { auth: string; onDeny: () => void }) 
       snapchat: snapchat.trim().replace(/^@/, ""),
       x: xHandle.trim().replace(/^@/, ""),
     });
+    const origin = window.location.origin;
+    const url = digits ? `${origin}/?wa=${digits}` : origin;
+    void saveCheckoutRails({
+      data: { auth, whatsapp: digits, stcPay: stcPay.trim(), iban: iban.trim() },
+    })
+      .then(() => {
+        setLink(url);
+        toast(t(lang, "saved"));
+      })
+      .catch((e) => {
+        if (opsDenied(e)) onDeny();
+        else toast(t(lang, "bookFail"));
+      });
     const pk = moyasarKey.trim();
     if (pk && !isMoyasarPk(pk)) {
       toast(t(lang, "madaBad"));
@@ -109,10 +122,6 @@ function SetupDashboard({ auth, onDeny }: { auth: string; onDeny: () => void }) 
       .catch((e) => {
         if (opsDenied(e)) onDeny();
       });
-    const origin = window.location.origin;
-    const url = digits ? `${origin}/?wa=${digits}` : origin;
-    setLink(url);
-    toast(t(lang, "saved"));
   }
 
   async function copy() {

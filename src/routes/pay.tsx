@@ -49,7 +49,7 @@ function PayReturn() {
       <p className="mt-4 text-muted">{state === "ok" ? t(lang, "payMadaBody") : t(lang, "thanksBody")}</p>
       <div className="mt-8 flex flex-col gap-3">
         <Button asChild>
-          <Link to="/ops">{t(lang, "openOps")}</Link>
+          <Link to="/care">{t(lang, "care")}</Link>
         </Button>
         <Button asChild variant="outline">
           <Link to="/shop">{t(lang, "continue")}</Link>

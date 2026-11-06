@@ -24,13 +24,13 @@ export function answerCare(raw: string, lang: Lang): string {
 
   if (has(n, ["بطاقه", "فيزا", "visa", "mastercard", "ماستر", "cvv", "pin", "رقم البطاق", "بانك كارد", "bank card"])) {
     return ar
-      ? "لا تدخل بطاقة بنك هنا، ولا ترسل رقمها في الدردشة. الدار لا تستلم بطاقتك ولا تحوّل لحساب وسيط. المبلغ يصل حسابك أنت: STC Pay أو الآيبان المسجَّل، أو مدى عبر بوابة معتمدة باسم المتجر. بعد الشحن والاستلام يُعلَّم الطلب «واصل» في الصندوق — المال لا يمر علينا."
+      ? "لا تدخل بطاقة بنك هنا، ولا ترسل رقمها في الدردشة. الدار لا تستلم بطاقتك ولا تحوّل لحساب وسيط. المبلغ يصل حسابك أنت: إس تي سي باي أو الآيبان المسجَّل، أو مدى عبر بوابة معتمدة باسم المتجر. بعد الشحن والاستلام يُعلَّم الطلب «واصل» في الصندوق — المال لا يمر علينا."
       : "Do not enter a bank card here, and never send the number in chat. The house does not hold your card or sit in the money path. Funds land on your STC Pay or IBAN, or on Mada through a licensed gateway in the store’s name. After delivery the desk marks the order received — money never passes through us.";
   }
 
   if (has(n, ["دفع", "فلوس", "حواله", "تحويل", "stc", "iban", "ايبان", "آيبان", "كاش", "استلام", "مدى", "pay"])) {
     return ar
-      ? "مسار المال المعتمد اليوم: تؤكد الطلب عبر واتساب، ثم تحويل STC Pay أو آيبان، أو الدفع عند الاستلام. مدى يظهر في الدفع فقط إن رُبط حساب Moyasar باسم المتجر. لا نأخذ عمولة وسيطة ولا نحوّل إلى بطاقة شخصية."
+      ? "مسار المال المعتمد اليوم: تؤكد الطلب عبر واتساب، ثم تحويل إس تي سي باي أو آيبان، أو الدفع عند الاستلام. مدى يظهر في الدفع فقط إن رُبط حساب ميسر باسم المتجر. لا نأخذ عمولة وسيطة ولا نحوّل إلى بطاقة شخصية."
       : "Today’s money path: confirm on WhatsApp, then STC Pay or IBAN, or cash on delivery. Mada appears at checkout only if a Moyasar account is keyed in the store’s name. We take no intermediary cut and we do not payout to a personal card.";
   }
 
@@ -82,7 +82,7 @@ export function answerCare(raw: string, lang: Lang): string {
   }
 
   return ar
-    ? "اسأل عن عطر، الشحن، الدفع، أو طلب قائم. للدفع: STC Pay أو الآيبان — بلا بطاقة في الدردشة. إن فضّلت الجوال، واتساب العمل مفتوح."
+    ? "اسأل عن عطر، الشحن، الدفع، أو طلب قائم. للدفع: إس تي سي باي أو الآيبان — بلا بطاقة في الدردشة. إن فضّلت الجوال، واتساب العمل مفتوح."
     : "Ask about a scent, shipping, payment, or an open order. Pay by STC Pay or IBAN — never a card in chat. WhatsApp is open if you prefer the phone.";
 }
 

@@ -63,13 +63,36 @@ function Campaign() {
         <article className="rounded-3xl bg-surface p-5 shadow-[var(--shadow-border)]">
           <h2 className="font-display text-2xl">{MONEY.title[lang]}</h2>
           <p className="mt-3 text-sm leading-relaxed text-muted">{MONEY.body[lang]}</p>
-          <p className="mt-4 text-sm text-muted">
-            STC Pay: {merchant.stcPay || t(lang, "railOff")}
-          </p>
-          <p className="mt-1 text-sm text-muted">IBAN: {merchant.iban || t(lang, "railOff")}</p>
-          <Button asChild variant="outline" className="mt-5 w-full">
-            <Link to="/setup">{t(lang, "setup")}</Link>
-          </Button>
+          {merchant.stcPay || merchant.iban ? (
+            <dl className="mt-4 space-y-3 text-sm">
+              {merchant.stcPay ? (
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="shrink-0 text-muted">{t(lang, "stcPay")}</dt>
+                  <dd dir="ltr" className="min-w-0 break-all text-end tabular-nums">
+                    {merchant.stcPay}
+                  </dd>
+                </div>
+              ) : null}
+              {merchant.iban ? (
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="shrink-0 text-muted">{t(lang, "iban")}</dt>
+                  <dd dir="ltr" className="min-w-0 break-all text-end tabular-nums">
+                    {merchant.iban}
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+          ) : (
+            <p className="mt-4 text-sm leading-7 text-muted">{t(lang, "railsCampaignEmpty")}</p>
+          )}
+          <div className="mt-5 flex flex-col gap-2">
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/gift-cards">{t(lang, "payPage")}</Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/setup">{t(lang, "setup")}</Link>
+            </Button>
+          </div>
         </article>
       </section>
 
