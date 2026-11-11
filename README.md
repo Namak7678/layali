@@ -64,3 +64,12 @@ paid — the ops agent then delivers an instant WhatsApp profit alert.
 - الدفع الإلكتروني: الكود موجود، والمفتاح السري غير مضبوط في بيئة الإنتاج.
 - التحويل اليدوي: الطريق البديل المتاح الآن (STC Pay أو آيبان).
 - المخزون: يجب تعبئته قبل أي حملة تسويقية.
+
+
+---
+
+### N3mak AI agent
+
+This project is part of the N3mak stack. The business agent lives on Telegram: exposure checks, website dossiers and instant quoting.
+Try it: https://t.me/N3mak_bot?start=gh_layali
+Product listing: https://namak7678.github.io/n3mak-ai-agent/
